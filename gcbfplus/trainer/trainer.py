@@ -143,20 +143,7 @@ class Trainer:
 
             # update the algorithm
             update_info = self.algo.update(rollouts, step)
-            
-            # if step == 0:
-            #     print(f"\n--- Buffer Inspection at Step {step} ---")
-            #     if hasattr(self.algo, 'buffer'):
-            #         print(f"Main Buffer Length: {self.algo.buffer.length}")
-            #         if self.algo.buffer._buffer is not None:
-            #             print(f"Main Buffer Actions Shape: {self.algo.buffer._buffer.actions.shape}")
-                
-            #     if hasattr(self.algo, 'unsafe_buffer'):
-            #         print(f"Unsafe Buffer Length: {self.algo.unsafe_buffer.length}")
-            #         if self.algo.unsafe_buffer._buffer is not None:
-            #             print(f"Unsafe Buffer Actions Shape: {self.algo.unsafe_buffer._buffer.actions.shape}")
-            #     print("--------------------------------------\n")
-
+ 
             wandb.log(update_info, step=self.update_steps)
             self.update_steps += 1
 

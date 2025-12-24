@@ -201,6 +201,11 @@ class GCBFPlus(GCBF):
         # Compute b_u_qp.
         n_chunks = 8
         batch_size = len(rollout.graph.states)
+
+        print("batch_size", batch_size)
+        print("n_chuncks", n_chunks)
+        sys.exit()
+
         chunk_size = batch_size // n_chunks
 
         # t0 = time.time()
