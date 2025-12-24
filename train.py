@@ -1,6 +1,7 @@
 import os
 os.environ["XLA_FLAGS"] = "--xla_gpu_autotune_level=0"
-os.environ["JAX_DEFAULT_MATMUL_PRECISION"] = "highest"
+os.environ["JAX_DEFAULT_MATMUL_PRECISION"] = "float32"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"  # Allocate 80% of GPU memory (16GB out of 20GB)
 
 import argparse
 import datetime
@@ -17,9 +18,6 @@ import jax
 
 def train(args):
     print(f"> Running train.py {args}")
-
-    # set up environment variables and seed
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
     if not is_connected():
         os.environ["WANDB_MODE"] = "offline"
@@ -54,7 +52,7 @@ def train(args):
         action_dim=env.action_dim,
         n_agents=env.num_agents,
         gnn_layers=args.gnn_layers,
-        batch_size=256,
+        batch_size=128,
         buffer_size=args.buffer_size,
         horizon=args.horizon,
         lr_actor=args.lr_actor,

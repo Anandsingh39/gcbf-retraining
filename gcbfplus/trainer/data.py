@@ -20,7 +20,6 @@ class Rollout(NamedTuple):
 
     @property
     def time_horizon(self) -> int:
-        print("rewards shape:",self.rewards.shape)  #--- IGNORE ---
         return self.rewards.shape[1]
 
     @property

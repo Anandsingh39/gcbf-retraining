@@ -199,13 +199,8 @@ class GCBFPlus(GCBF):
         update_info = {}
 
         # Compute b_u_qp.
-        n_chunks = 8
-        batch_size = len(rollout.graph.states)
-
-        print("batch_size", batch_size)
-        print("n_chuncks", n_chunks)
-        sys.exit()
-
+        n_chunks = 16
+        batch_size = len(rollout.graph.states)//2
         chunk_size = batch_size // n_chunks
 
         # t0 = time.time()
@@ -218,8 +213,12 @@ class GCBFPlus(GCBF):
         batch_orig = Batch(rollout.graph, safe_mask, unsafe_mask, b_u_qp)
 
         for i_epoch in range(self.inner_epoch):
-            idx = self.rng.choice(rollout.length, size=rollout.length, replace=False)
+            idx = self.rng.choice((rollout.length)//2, size=(rollout.length)//2, replace=False)
             # (n_mb, mb_size)
+            # print(idx.shape)  #--- IGNORE ---
+            # print(idx)
+            # print(rollout.length // self.batch_size)  #--- IGNORE ---
+
             batch_idx = np.stack(np.array_split(idx, idx.shape[0] // self.batch_size), axis=0)
             batch = jtu.tree_map(lambda x: x[batch_idx], batch_orig)
 
@@ -295,22 +294,20 @@ class GCBFPlus(GCBF):
 
     def update(self, rollout: Rollout, step: int) -> dict:
         key, self.key = jr.split(self.key)
-        print("Update step:", step)  #--- IGNORE ---
+        # print("Update step:", step)  #--- IGNORE ---
         # (n_collect, T)
         unsafe_mask = jax_vmap(jax_vmap(self._env.unsafe_mask))(rollout.graph)
         # print("unsafe_mask shape:",unsafe_mask) #--- IGNORE ---
         safe_mask = self.safe_mask(unsafe_mask)
         # print("safe_mask shape:",safe_mask) #--- IGNORE ---
         safe_mask, unsafe_mask = jax2np(safe_mask), jax2np(unsafe_mask)
-        print("safe mask count", jnp.sum(safe_mask))  #--- IGNORE ---
-        print("unsafe mask count", jnp.sum(unsafe_mask))  #--- IGNORE ---
+        # print("safe mask count", jnp.sum(safe_mask))  #--- IGNORE ---
+        # print("unsafe mask count", jnp.sum(unsafe_mask))  #--- IGNORE ---
         rollout_np = jax2np(rollout)
         del rollout
         rollout_batch, safe_mask_batch, unsafe_mask_batch = self.sample_batch(rollout_np, safe_mask, unsafe_mask)
         # inner loop
         update_info = self.update_nets(rollout_batch, safe_mask_batch, unsafe_mask_batch)
-        print("update_info:",update_info) #--- IGNORE ---
-        sys.exit()
         return update_info
 
     def get_qp_action(
@@ -383,18 +380,16 @@ class GCBFPlus(GCBF):
                 cbf_fn = jax_vmap(ft.partial(self.cbf.get_cbf, cbf_params))
                 cbf_fn_no_grad = jax_vmap(ft.partial(self.cbf.get_cbf, jax.lax.stop_gradient(cbf_params)))
                 # (minibatch_size, n_agents)
+
+                print("minibatch.graph.states shape:", minibatch.graph.states.shape)  #--- IGNORE ---
+                sys.exit()
                 h = cbf_fn(minibatch.graph).squeeze(-1)
                 # (minibatch_size * n_agents,)
                 h = merge01(h)
-                print("h shape: {s}, first 10 values: {v}", s=h.shape, v=h[:10])
                 # unsafe region h(x) < 0
                 unsafe_data_ratio = jnp.mean(unsafe_mask_batch)
-                print("unsafe_data_ratio: {r}, unsafe_mask_batch shape: {s}", r=unsafe_data_ratio, s=unsafe_mask_batch.shape)
                 h_unsafe = jnp.where(unsafe_mask_batch, h, -jnp.ones_like(h) * self.eps * 2)
                 max_val_unsafe = jax.nn.relu(h_unsafe + self.eps)
-                print("max_val_unsafe:",max_val_unsafe) #--- IGNORE ---
-                print("h_unsafe:",h_unsafe) #--- IGNORE ---
-                sys.exit()
                 loss_unsafe = jnp.sum(max_val_unsafe) / (jnp.count_nonzero(unsafe_mask_batch) + 1e-6)
                 acc_unsafe_mask = jnp.where(unsafe_mask_batch, h, jnp.ones_like(h))
                 acc_unsafe = (jnp.sum(jnp.less(acc_unsafe_mask, 0)) + 1e-6) / (jnp.count_nonzero(unsafe_mask_batch) + 1e-6)

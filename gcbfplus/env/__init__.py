@@ -17,7 +17,7 @@ ENV = {
 }
 
 
-DEFAULT_MAX_STEP = 256
+DEFAULT_MAX_STEP = 256*3
 
 
 def make_env(
@@ -41,6 +41,6 @@ def make_env(
         area_size=area_size,
         max_step=max_step,
         max_travel=max_travel,
-        dt=0.03, # 0.003,0.001, 0.01, 0.03
+        dt=0.01, # 0.003,0.001, 0.01, 0.03
         params=params
     )

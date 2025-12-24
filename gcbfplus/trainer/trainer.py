@@ -104,11 +104,11 @@ class Trainer:
         pbar = tqdm(total=self.steps, ncols=80)
         for step in range(0, self.steps + 1):
             # evaluate the algorithm
-            print("\n")
+            # print("\n")
             if step % self.eval_interval == 0:
-                print("Evaluation at step:", step)
+                # print("Evaluation at step:", step)
                 test_rollouts: Rollout = test_fn(self.algo.actor_params, test_keys)
-                print("test_rollouts:",test_rollouts.actions.shape) #--- IGNORE ---
+                # print("test_rollouts:",test_rollouts.actions.shape) #--- IGNORE ---
                 total_reward = test_rollouts.rewards.sum(axis=-1)
                 assert total_reward.shape == (self.n_env_test,)
                 reward_min, reward_max = total_reward.min(), total_reward.max()
@@ -139,11 +139,24 @@ class Trainer:
             key_x0, self.key = jax.random.split(self.key)
             key_x0 = jax.random.split(key_x0, self.n_env_train)
             rollouts: Rollout = rollout_fn(self.algo.actor_params, key_x0)
-            print("rollouts:",rollouts.actions.shape) #--- IGNORE ---
+            # print("rollouts:",rollouts.actions.shape) #--- IGNORE ---
 
             # update the algorithm
             update_info = self.algo.update(rollouts, step)
- 
+            
+            # if step == 0:
+            #     print(f"\n--- Buffer Inspection at Step {step} ---")
+            #     if hasattr(self.algo, 'buffer'):
+            #         print(f"Main Buffer Length: {self.algo.buffer.length}")
+            #         if self.algo.buffer._buffer is not None:
+            #             print(f"Main Buffer Actions Shape: {self.algo.buffer._buffer.actions.shape}")
+                
+            #     if hasattr(self.algo, 'unsafe_buffer'):
+            #         print(f"Unsafe Buffer Length: {self.algo.unsafe_buffer.length}")
+            #         if self.algo.unsafe_buffer._buffer is not None:
+            #             print(f"Unsafe Buffer Actions Shape: {self.algo.unsafe_buffer._buffer.actions.shape}")
+            #     print("--------------------------------------\n")
+
             wandb.log(update_info, step=self.update_steps)
             self.update_steps += 1
 
