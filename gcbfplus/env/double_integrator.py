@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
-
+import sys
 from typing import NamedTuple, Tuple, Optional
 
 from ..utils.graph import EdgeBlock, GetGraph, GraphsTuple
@@ -14,7 +14,7 @@ from .base import MultiAgentEnv, RolloutResult
 from .obstacle import Obstacle, Rectangle
 from .plot import render_video
 from .utils import get_lidar, inside_obstacles, lqr, get_node_goal_rng
-
+import sys
 
 class DoubleIntegrator(MultiAgentEnv):
     AGENT = 0
@@ -47,7 +47,7 @@ class DoubleIntegrator(MultiAgentEnv):
             area_size: float,
             max_step: int = 256,
             max_travel: float = None,
-            dt: float = 0.03,
+            dt: float = 0.03, #change 0.03,0.003,0.01,0.001
             params: dict = None
     ):
         super(DoubleIntegrator, self).__init__(num_agents, area_size, max_step, max_travel, dt, params)
@@ -157,7 +157,7 @@ class DoubleIntegrator(MultiAgentEnv):
         assert agent_states.shape == (self.num_agents, self.state_dim)
 
         next_agent_states = self.agent_step_euler(agent_states, action)
-
+        # print("next_agent_states:",self.get_graph(next_agent_states)) #--- IGNORE ---c
         # the episode ends when reaching max_episode_steps
         done = jnp.array(False)
 

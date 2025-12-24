@@ -1,6 +1,9 @@
+import os
+os.environ["XLA_FLAGS"] = "--xla_gpu_autotune_level=0"
+os.environ["JAX_DEFAULT_MATMUL_PRECISION"] = "highest"
+
 import argparse
 import datetime
-import os
 import ipdb
 import numpy as np
 import wandb
@@ -10,13 +13,14 @@ from gcbfplus.algo import make_algo
 from gcbfplus.env import make_env
 from gcbfplus.trainer.trainer import Trainer
 from gcbfplus.trainer.utils import is_connected
-
+import jax
 
 def train(args):
     print(f"> Running train.py {args}")
 
     # set up environment variables and seed
     os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
     if not is_connected():
         os.environ["WANDB_MODE"] = "offline"
     np.random.seed(args.seed)

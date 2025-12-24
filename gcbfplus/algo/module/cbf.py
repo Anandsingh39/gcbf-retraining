@@ -7,7 +7,7 @@ from ...nn.mlp import MLP
 from ...nn.utils import default_nn_init
 from ...utils.typing import Array, Params
 from ...utils.graph import GraphsTuple
-
+import sys
 
 class CBFNet(nn.Module):
     gnn_cls: Type[GNN]
@@ -50,4 +50,6 @@ class CBF:
         )
 
     def get_cbf(self, params: Params, obs: GraphsTuple) -> Array:
+        # print("getcbf", self.net.apply(params, obs, self.n_agents))
+        # sys.exit()
         return self.net.apply(params, obs, self.n_agents)

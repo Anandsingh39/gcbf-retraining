@@ -18,6 +18,8 @@ from gcbfplus.trainer.utils import get_bb_cbf
 from gcbfplus.utils.graph import GraphsTuple
 from gcbfplus.utils.utils import jax_jit_np, tree_index, chunk_vmap, merge01, jax_vmap
 
+import os
+os.environ['XLA_FLAGS'] = "--xla_gpu_autotune_level=0"
 
 def test(args):
     print(f"> Running test.py {args}")

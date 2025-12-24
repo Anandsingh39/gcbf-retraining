@@ -7,7 +7,7 @@ import functools as ft
 import jax.tree_util as jtu
 import numpy as np
 import einops as ei
-
+import sys
 from typing import Optional, Tuple, NamedTuple
 from flax.training.train_state import TrainState
 from jaxproxqp.jaxproxqp import JaxProxQP
@@ -231,6 +231,7 @@ class GCBFPlus(GCBF):
 
     def sample_batch(self, rollout: Rollout, safe_mask, unsafe_mask):
         if self.buffer.length > self.batch_size:
+            # print("Sampling batch from replay buffer")  #--- IGNORE ---
             # sample from memory
             memory, safe_mask_memory, unsafe_mask_memory = self.buffer.sample(rollout.length)
             try:
@@ -256,6 +257,7 @@ class GCBFPlus(GCBF):
             safe_mask = tree_merge([safe_mask_memory, safe_mask])
             unsafe_mask = tree_merge([unsafe_mask_memory, unsafe_mask])
 
+
             # (b, T) -> (b * T, )
             rollout = jtu.tree_map(lambda x: merge01(x), rollout)
             safe_mask = merge01(safe_mask)
@@ -264,8 +266,14 @@ class GCBFPlus(GCBF):
             safe_mask_batch = tree_merge([safe_mask_unsafe_memory, safe_mask])
             unsafe_mask_batch = tree_merge([unsafe_mask_unsafe_memory, unsafe_mask])
         else:
+            # print("Filling replay buffer:", self.buffer.length, "/", self.batch_size)  #--- IGNORE ---
             self.buffer.append(rollout, safe_mask, unsafe_mask)
+            # print("rollout size in buffer:", self.buffer.length)  #--- IGNORE ---
+            # print("unsade buffer size in buffer:", self.unsafe_buffer.length)  #--- IGNORE ---
+            # print("unsafe_mask size in buffer:", unsafe_mask.shape)  #--- IGNORE ---
+            # print("safe_mask size in buffer:", safe_mask.shape)  #--- IGNORE ---
             unsafe_multi_mask = unsafe_mask.max(axis=-1)
+            # print("unsafe_multi_mask size:", unsafe_multi_mask.shape)  #--- IGNORE ---
             self.unsafe_buffer.append(
                 jtu.tree_map(lambda x: x[unsafe_multi_mask], rollout),
                 safe_mask[unsafe_multi_mask],
@@ -277,23 +285,27 @@ class GCBFPlus(GCBF):
             safe_mask_batch = merge01(safe_mask)
             unsafe_mask_batch = merge01(unsafe_mask)
 
+
         return rollout_batch, safe_mask_batch, unsafe_mask_batch
 
     def update(self, rollout: Rollout, step: int) -> dict:
         key, self.key = jr.split(self.key)
-
+        print("Update step:", step)  #--- IGNORE ---
         # (n_collect, T)
         unsafe_mask = jax_vmap(jax_vmap(self._env.unsafe_mask))(rollout.graph)
+        # print("unsafe_mask shape:",unsafe_mask) #--- IGNORE ---
         safe_mask = self.safe_mask(unsafe_mask)
+        # print("safe_mask shape:",safe_mask) #--- IGNORE ---
         safe_mask, unsafe_mask = jax2np(safe_mask), jax2np(unsafe_mask)
-
+        print("safe mask count", jnp.sum(safe_mask))  #--- IGNORE ---
+        print("unsafe mask count", jnp.sum(unsafe_mask))  #--- IGNORE ---
         rollout_np = jax2np(rollout)
         del rollout
         rollout_batch, safe_mask_batch, unsafe_mask_batch = self.sample_batch(rollout_np, safe_mask, unsafe_mask)
-
         # inner loop
         update_info = self.update_nets(rollout_batch, safe_mask_batch, unsafe_mask_batch)
-
+        print("update_info:",update_info) #--- IGNORE ---
+        sys.exit()
         return update_info
 
     def get_qp_action(
@@ -369,11 +381,15 @@ class GCBFPlus(GCBF):
                 h = cbf_fn(minibatch.graph).squeeze(-1)
                 # (minibatch_size * n_agents,)
                 h = merge01(h)
-
+                print("h shape: {s}, first 10 values: {v}", s=h.shape, v=h[:10])
                 # unsafe region h(x) < 0
                 unsafe_data_ratio = jnp.mean(unsafe_mask_batch)
+                print("unsafe_data_ratio: {r}, unsafe_mask_batch shape: {s}", r=unsafe_data_ratio, s=unsafe_mask_batch.shape)
                 h_unsafe = jnp.where(unsafe_mask_batch, h, -jnp.ones_like(h) * self.eps * 2)
                 max_val_unsafe = jax.nn.relu(h_unsafe + self.eps)
+                print("max_val_unsafe:",max_val_unsafe) #--- IGNORE ---
+                print("h_unsafe:",h_unsafe) #--- IGNORE ---
+                sys.exit()
                 loss_unsafe = jnp.sum(max_val_unsafe) / (jnp.count_nonzero(unsafe_mask_batch) + 1e-6)
                 acc_unsafe_mask = jnp.where(unsafe_mask_batch, h, jnp.ones_like(h))
                 acc_unsafe = (jnp.sum(jnp.less(acc_unsafe_mask, 0)) + 1e-6) / (jnp.count_nonzero(unsafe_mask_batch) + 1e-6)
